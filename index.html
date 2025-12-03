@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -77,15 +77,16 @@
 </head>
 <body class="h-screen flex flex-col items-center justify-center p-4 relative">
 
-    <!-- API Key 입력 모달 -->
+    <!-- API Key 입력 모달 (자동으로 숨겨짐) -->
     <div id="apikey-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
         <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all scale-100">
             <div class="text-center mb-6">
                 <span class="text-4xl block mb-2">🔑</span>
                 <h2 class="text-2xl font-bold text-gray-800">선생님, 환영합니다!</h2>
                 <p class="text-gray-600 mt-2 text-sm">
-                    수업을 시작하려면 <strong>Google Gemini API 키</strong>가 필요합니다.<br>
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-600 underline hover:text-blue-800">여기서 무료로 발급</a>받아 입력해주세요.
+                    설정된 API 키가 없습니다.<br>
+                    <strong>Google Gemini API 키</strong>를 입력하거나<br>
+                    코드 내 <code>teacherApiKey</code> 변수에 키를 넣어주세요.
                 </p>
             </div>
             <form id="apikey-form" class="space-y-4">
@@ -100,9 +101,6 @@
                     연구소 입장하기 🚀
                 </button>
             </form>
-            <p class="text-xs text-gray-400 mt-4 text-center">
-                * 입력한 키는 선생님의 브라우저에만 저장되며 서버로 전송되지 않습니다.
-            </p>
         </div>
     </div>
 
@@ -160,8 +158,6 @@
                 </button>
             </form>
             <div class="text-center mt-2">
-                <button id="reset-key-btn" class="text-xs text-gray-400 hover:text-gray-600 underline">API Key 재설정</button>
-                <span class="text-xs text-gray-400 mx-2">|</span>
                 <span class="text-xs text-gray-400">Powered by Google Gemini</span>
             </div>
         </div>
@@ -172,19 +168,23 @@
         const chatForm = document.getElementById('chat-form');
         const userInput = document.getElementById('user-input');
         
+        // ==========================================
+        // [선생님 전용] API 키 적용 완료!
+        const teacherApiKey = "AIzaSyB4-7bMPfwujEmSBNUOOdxzN090n3F0F9o"; 
+        // ==========================================
+
         // API Key 관리 로직
         const apikeyModal = document.getElementById('apikey-modal');
         const apikeyForm = document.getElementById('apikey-form');
         const apiKeyInput = document.getElementById('api-key-input');
-        const resetKeyBtn = document.getElementById('reset-key-btn');
-        let apiKey = localStorage.getItem('gemini_api_key') || "";
+        let apiKey = teacherApiKey || localStorage.getItem('gemini_api_key') || "";
 
         // 시작 시 API Key 확인
         if (!apiKey) {
             apikeyModal.classList.remove('hidden');
         }
 
-        // API Key 저장
+        // API Key 저장 (모달에서 입력했을 경우)
         apikeyForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const key = apiKeyInput.value.trim();
@@ -193,14 +193,6 @@
                 localStorage.setItem('gemini_api_key', key);
                 apikeyModal.classList.add('hidden');
                 addMessage("연구소 입장이 승인되었습니다. 상담을 시작해보세요!", 'system');
-            }
-        });
-
-        // API Key 재설정 버튼
-        resetKeyBtn.addEventListener('click', () => {
-            if(confirm('API Key를 다시 입력하시겠습니까?')) {
-                localStorage.removeItem('gemini_api_key');
-                location.reload();
             }
         });
 
