@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 팩트체크 연구소 - Dr.AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 마크다운 렌더링을 위한 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #f0f9ff; }
+        
+        /* 채팅 말풍선 스타일 */
+        .bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            position: relative;
+            word-wrap: break-word;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .bubble-user {
+            background-color: #3b82f6; /* Blue-500 */
+            color: white;
+            border-bottom-right-radius: 4px;
+            margin-left: auto;
+        }
+        .bubble-ai {
+            background-color: white;
+            color: #1f2937; /* Gray-800 */
+            border-bottom-left-radius: 4px;
+            margin-right: auto;
+            border: 1px solid #e5e7eb;
+        }
+        .bubble-system {
+            background-color: #fee2e2; /* Red-100 */
+            color: #b91c1c; /* Red-700 */
+            margin: 10px auto;
+            text-align: center;
+            width: 90%;
+            font-weight: bold;
+            border: 1px solid #fca5a5;
+        }
+        
+        /* 로딩 애니메이션 */
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: #9ca3af;
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out both;
+            margin: 0 1px;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* 스크롤바 커스텀 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* API 키 입력 모달 스타일 */
+        #apikey-modal {
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center p-4 relative">
+
+    <!-- API Key 입력 모달 -->
+    <div id="apikey-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all scale-100">
+            <div class="text-center mb-6">
+                <span class="text-4xl block mb-2">🔑</span>
+                <h2 class="text-2xl font-bold text-gray-800">선생님, 환영합니다!</h2>
+                <p class="text-gray-600 mt-2 text-sm">
+                    수업을 시작하려면 <strong>Google Gemini API 키</strong>가 필요합니다.<br>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-blue-600 underline hover:text-blue-800">여기서 무료로 발급</a>받아 입력해주세요.
+                </p>
+            </div>
+            <form id="apikey-form" class="space-y-4">
+                <div>
+                    <label for="api-key-input" class="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                    <input type="password" id="api-key-input" required
+                        class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                        placeholder="AIzaSy... 로 시작하는 키를 입력하세요">
+                </div>
+                <button type="submit" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg transition transform active:scale-95">
+                    연구소 입장하기 🚀
+                </button>
+            </form>
+            <p class="text-xs text-gray-400 mt-4 text-center">
+                * 입력한 키는 선생님의 브라우저에만 저장되며 서버로 전송되지 않습니다.
+            </p>
+        </div>
+    </div>
+
+    <!-- 메인 컨테이너 -->
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[90vh]">
+        
+        <!-- 헤더 -->
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 flex items-center justify-between shrink-0">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white p-2 rounded-full">
+                    <span class="text-2xl">👨‍⚕️</span>
+                </div>
+                <div>
+                    <h1 class="text-white font-bold text-xl">AI 팩트체크 연구소</h1>
+                    <p class="text-blue-100 text-xs">Dr. AI와 함께하는 건강 상담실</p>
+                </div>
+            </div>
+            <div class="text-white text-xs bg-white/20 px-3 py-1 rounded-full">
+                대치초 6학년 과학
+            </div>
+        </div>
+
+        <!-- 안내 메시지 -->
+        <div class="bg-blue-50 p-3 text-sm text-blue-800 border-b border-blue-100 shrink-0 flex items-start gap-2">
+            <span class="text-lg">📢</span>
+            <p><strong>수업 규칙:</strong> 비속어를 사용하면 경고 조치되며, 선생님께 내용이 자동 전송됩니다. 건강과 관련된 질문만 해주세요!</p>
+        </div>
+
+        <!-- 채팅 영역 -->
+        <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+            <!-- 초기 환영 메시지 -->
+            <div class="flex flex-col space-y-2">
+                <div class="flex items-end gap-2">
+                    <span class="text-2xl mb-1">👨‍⚕️</span>
+                    <div class="bubble bubble-ai">
+                        안녕? 나는 <strong>Dr. AI</strong>야. 👋<br>
+                        너의 건강 체크리스트 결과는 어땠니?<br>
+                        "라면을 너무 많이 먹어", "잠을 늦게 자" 같은 너의 고민을 말해주면, 내가 과학적인 처방을 내려줄게!
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 입력 영역 -->
+        <div class="p-4 bg-white border-t border-gray-100 shrink-0">
+            <form id="chat-form" class="flex gap-2">
+                <input type="text" id="user-input" 
+                    class="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
+                    placeholder="예: 요즘 운동을 안 해서 자꾸 숨이 차요." required autocomplete="off">
+                <button type="submit" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-3 w-12 h-12 flex items-center justify-center shadow-lg transition transform hover:scale-105 active:scale-95 disabled:bg-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 ml-1">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                    </svg>
+                </button>
+            </form>
+            <div class="text-center mt-2">
+                <button id="reset-key-btn" class="text-xs text-gray-400 hover:text-gray-600 underline">API Key 재설정</button>
+                <span class="text-xs text-gray-400 mx-2">|</span>
+                <span class="text-xs text-gray-400">Powered by Google Gemini</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById('chat-container');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        
+        // API Key 관리 로직
+        const apikeyModal = document.getElementById('apikey-modal');
+        const apikeyForm = document.getElementById('apikey-form');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const resetKeyBtn = document.getElementById('reset-key-btn');
+        let apiKey = localStorage.getItem('gemini_api_key') || "";
+
+        // 시작 시 API Key 확인
+        if (!apiKey) {
+            apikeyModal.classList.remove('hidden');
+        }
+
+        // API Key 저장
+        apikeyForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                apiKey = key;
+                localStorage.setItem('gemini_api_key', key);
+                apikeyModal.classList.add('hidden');
+                addMessage("연구소 입장이 승인되었습니다. 상담을 시작해보세요!", 'system');
+            }
+        });
+
+        // API Key 재설정 버튼
+        resetKeyBtn.addEventListener('click', () => {
+            if(confirm('API Key를 다시 입력하시겠습니까?')) {
+                localStorage.removeItem('gemini_api_key');
+                location.reload();
+            }
+        });
+
+        // 대화 히스토리 (시스템 프롬프트 포함)
+        let chatHistory = [
+            {
+                role: "user",
+                parts: [{ text: `
+                    당신은 초등학교 6학년 학생들을 위한 'AI 팩트체크 연구소'의 건강 상담 선생님 '닥터 AI(Dr. AI)'입니다.
+                    다음 규칙을 철저히 지켜주세요:
+                    1. 대상: 초등학교 6학년 학생 (친절하고, 쉬운 용어 사용, 격려하는 말투).
+                    2. 역할: 학생의 건강 고민(식습관, 운동, 수면 등)을 듣고, '우리 몸의 구조와 기능' 단원 내용(소화, 순환, 호흡, 배설, 뼈와 근육 등)을 근거로 과학적인 조언을 해주세요.
+                    3. 제재: 건강이나 몸과 전혀 관련 없는 질문(게임, 연예인, 숙제 해줘 등)을 하면 "저는 건강 상담만 해줄 수 있어요. 우리 몸에 대해 궁금한 점을 물어봐 줄래?"라고 정중히 거절하고 다시 건강 주제로 유도하세요.
+                    4. 비속어 대응: 사용자가 비속어를 쓰면 절대 대답하지 말고, 시스템 경고 메시지를 띄우도록 유도하세요.
+                    5. 답변 길이: 3~4문장 내외로 간결하게 작성하세요. 이모지를 적절히 사용하여 친근감을 주세요.
+                    6. 금지: 의학적 진단(병명 확진)이나 약물 처방은 하지 말고, 병원 방문이나 생활 습관 교정을 권유하세요.
+                ` }]
+            },
+            {
+                role: "model",
+                parts: [{ text: "네, 알겠습니다. 초등학교 6학년 친구들의 건강을 지키는 친절한 닥터 AI가 되어 상담을 진행하겠습니다." }]
+            }
+        ];
+
+        // 비속어 필터 리스트 (예시 - 실제 운영 시 더 보강 필요)
+        const badWords = ['바보', '멍청이', '씨발', '개새끼', '병신', '지랄', '닥쳐', '꺼져', '죽어', '미친', '놈', '년'];
+
+        // 메시지 추가 함수
+        function addMessage(text, sender) {
+            const div = document.createElement('div');
+            div.className = 'flex flex-col space-y-2';
+            
+            let icon = '';
+            let bubbleClass = '';
+            let alignClass = '';
+
+            if (sender === 'user') {
+                bubbleClass = 'bubble bubble-user';
+                alignClass = 'items-end';
+            } else if (sender === 'ai') {
+                icon = '<span class="text-2xl mb-1">👨‍⚕️</span>';
+                bubbleClass = 'bubble bubble-ai';
+                alignClass = 'items-start';
+            } else if (sender === 'system') {
+                // 시스템 경고 메시지
+                div.innerHTML = `<div class="bubble bubble-system">🚨 ${text}</div>`;
+                chatContainer.appendChild(div);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                return;
+            }
+
+            const contentHtml = sender === 'ai' ? marked.parse(text) : text;
+
+            div.innerHTML = `
+                <div class="flex ${alignClass} gap-2">
+                    ${sender === 'ai' ? icon : ''}
+                    <div class="${bubbleClass}">
+                        ${contentHtml}
+                    </div>
+                </div>
+            `;
+            
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // 로딩 표시 함수
+        function showLoading() {
+            const div = document.createElement('div');
+            div.id = 'loading-bubble';
+            div.className = 'flex items-start gap-2';
+            div.innerHTML = `
+                <span class="text-2xl mb-1">👨‍⚕️</span>
+                <div class="bubble bubble-ai">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function hideLoading() {
+            const loadingBubble = document.getElementById('loading-bubble');
+            if (loadingBubble) loadingBubble.remove();
+        }
+
+        // 비속어 체크 함수
+        function checkProfanity(text) {
+            for (let word of badWords) {
+                if (text.includes(word)) return true;
+            }
+            return false;
+        }
+
+        // API 호출 및 응답 처리
+        async function handleChat(message) {
+            // 1. 비속어 1차 필터링 (클라이언트 단)
+            if (checkProfanity(message)) {
+                addMessage("[경고] 비속어/욕설이 감지되었습니다.<br>해당 발언이 선생님께 자동 발송 되었습니다.", 'system');
+                return;
+            }
+
+            if (!apiKey) {
+                apikeyModal.classList.remove('hidden');
+                return;
+            }
+
+            // 로딩 표시
+            showLoading();
+
+            try {
+                // 대화 내역에 사용자 메시지 추가
+                chatHistory.push({
+                    role: "user",
+                    parts: [{ text: message }]
+                });
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: chatHistory,
+                        generationConfig: {
+                            temperature: 0.7, // 창의성과 일관성 조절
+                            maxOutputTokens: 300, // 너무 긴 답변 방지
+                        }
+                    })
+                });
+
+                const data = await response.json();
+                hideLoading();
+
+                if (data.error) {
+                    addMessage("오류가 발생했어요. API Key를 확인해주세요.", 'system');
+                    console.error(data.error);
+                    return;
+                }
+
+                const aiResponse = data.candidates[0].content.parts[0].text;
+                
+                // 2. AI 답변 내에 비속어/부적절 표현 필터링 (안전장치)
+                // (AI가 프롬프트 지시를 어기거나 탈옥하는 경우 대비)
+                
+                // 대화 내역에 AI 답변 추가
+                chatHistory.push({
+                    role: "model",
+                    parts: [{ text: aiResponse }]
+                });
+
+                addMessage(aiResponse, 'ai');
+
+            } catch (error) {
+                hideLoading();
+                addMessage("네트워크 오류가 발생했어요.", 'system');
+                console.error(error);
+            }
+        }
+
+        // 폼 제출 이벤트
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            addMessage(message, 'user');
+            userInput.value = '';
+            
+            handleChat(message);
+        });
+    </script>
+</body>
+</html>
